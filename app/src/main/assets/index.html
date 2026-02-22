@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Letter Tracer ✏️</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@500;700;800;900&family=Noto+Sans+Telugu:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════
+   TABLET-FIRST DESIGN SYSTEM
+   • All tap targets ≥ 48px (WCAG AA touch)
+   • High-DPI canvas (devicePixelRatio)
+   • Side toolbar — not top bar — saves vertical writing space
+   • Large, readable labels for kids
+   • Safe area insets for notched tablets
+════════════════════════════════════════ */
+:root {
+  --teal:    #3EC9C0;
+  --teal2:   #2AADA4;
+  --yellow:  #FFD93D;
+  --purple:  #9B5DE5;
+  --coral:   #FF6B6B;
+  --green:   #28C76F;
+  --ink:     #1E2952;
+  --paper:   #FFFDF6;
+  --sidebar: #1E2952;
+  --sidebar2:#252F66;
+  --bg:      #EEF5FF;
+
+  /* Tablet tap target minimum */
+  --tap: 52px;
+  --tap-sm: 44px;
+
+  /* Sidebar width — fixed, comfortable for thumb reach */
+  --sw: 88px;
+
+  /* Font sizes for kids on tablets */
+  --fs-label: 13px;
+  --fs-btn:   15px;
+  --fs-big:   18px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── ROOT LAYOUT: sidebar left, canvas right ── */
+#app {
+  display: flex;
+  width: 100vw;
+  height: 100dvh;
+  height: 100vh; /* fallback */
+}
+
+/* ════════════════════════════════════════
+   SIDEBAR TOOLBAR
+════════════════════════════════════════ */
+#sidebar {
+  width: var(--sw);
+  flex-shrink: 0;
+  background: linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar2) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px 10px 6px;
+  padding-left: max(6px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  z-index: 20;
+  box-shadow: 4px 0 20px rgba(0,0,0,.25);
+}
+#sidebar::-webkit-scrollbar { display: none; }
+
+/* Logo at top */
+.sidebar-logo {
+  font-family: 'Fredoka One', cursive;
+  font-size: 13px;
+  color: var(--yellow);
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  letter-spacing: .5px;
+}
+.sidebar-logo span { color: white; display: block; font-size: 11px; }
+
+/* Divider */
+.sb-div {
+  width: 56px;
+  height: 1px;
+  background: rgba(255,255,255,.12);
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+/* Section label */
+.sb-section {
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255,255,255,.35);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  align-self: flex-start;
+  padding-left: 4px;
+  margin-top: 4px;
+}
+
+/* Icon button — square, large tap target */
+.sb-btn {
+  width: 68px;
+  min-height: var(--tap-sm);
+  border-radius: 14px;
+  border: 2px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.75);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: var(--fs-label);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all .15s;
+  padding: 6px 4px;
+  text-align: center;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+.sb-btn:active { transform: scale(.95); }
+.sb-btn .icon { font-size: 20px; line-height: 1; }
+.sb-btn .lbl  { font-size: 9px; opacity: .8; }
+.sb-btn.active {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: white;
+  box-shadow: 0 4px 12px rgba(62,201,192,.4);
+}
+.sb-btn.danger { border-color: rgba(255,107,107,.5); color: #FFB3B3; }
+.sb-btn.danger:active { background: rgba(255,107,107,.2); }
+.sb-btn.yellow-active.active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(255,217,61,.4);
+}
+
+/* Language toggle — two wide pills */
+.lang-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 68px;
+}
+.lang-btn {
+  width: 68px;
+  height: var(--tap-sm);
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,.15);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.7);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.lang-btn:active { transform: scale(.95); }
+.lang-btn.active {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: var(--ink);
+  box-shadow: 0 3px 10px rgba(255,217,61,.4);
+}
+
+/* Ink color swatches */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 68px;
+}
+.clr-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 3px solid rgba(255,255,255,.2);
+  cursor: pointer;
+  transition: transform .12s, border-color .12s;
+  min-height: 28px;
+}
+.clr-swatch:active { transform: scale(.9); }
+.clr-swatch.active {
+  border-color: white;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.4);
+  transform: scale(1.08);
+}
+
+/* Stroke size row */
+.stroke-sizes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 68px;
+  align-items: center;
+}
+.sz-btn {
+  width: 68px;
+  height: var(--tap-sm);
+  border-radius: 12px;
+  border: 2px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.07);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all .15s;
+  flex-shrink: 0;
+  color: rgba(255,255,255,.6);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 0 8px;
+}
+.sz-btn:active { transform: scale(.95); }
+.sz-btn.active { background: var(--teal); border-color: var(--teal); }
+.sz-dot {
+  border-radius: 50%;
+  background: white;
+  flex-shrink: 0;
+}
+
+/* Zoom display */
+.zoom-display {
+  width: 68px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  border: 1.5px solid rgba(255,255,255,.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  color: rgba(255,255,255,.7);
+  flex-shrink: 0;
+  transition: color .2s;
+}
+.zoom-display.zooming { color: var(--yellow); }
+
+/* Palm rejection badge */
+.palm-badge {
+  width: 68px;
+  border-radius: 10px;
+  background: rgba(40,199,111,.18);
+  border: 1.5px solid rgba(40,199,111,.4);
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.palm-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #28C76F;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.25;} }
+.palm-text {
+  font-size: 8px;
+  font-weight: 800;
+  color: #7DFFB3;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ════════════════════════════════════════
+   MAIN CANVAS AREA
+════════════════════════════════════════ */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+  touch-action: none;
+}
+
+/* High-DPI: canvas element size is set by JS to physical pixels,
+   CSS size stretches it back to logical pixels */
+#bgCanvas, #drawCanvas {
+  position: absolute;
+  inset: 0;
+  /* CSS dimensions = logical (container) size */
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#bgCanvas   { z-index: 1; pointer-events: none; }
+#drawCanvas { z-index: 3; cursor: crosshair; background: transparent; }
+
+/* Stylus indicator — top right of canvas */
+#stylus-ind {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(30,41,82,.88);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  letter-spacing: .3px;
+}
+#stylus-ind.visible { opacity: 1; }
+
+/* Page info badge — bottom right */
+#page-info {
+  position: absolute;
+  bottom: 16px; right: 16px;
+  background: rgba(30,41,82,.6);
+  color: rgba(255,255,255,.8);
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+  z-index: 8;
+  backdrop-filter: blur(4px);
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--ink);
+  color: white;
+  padding: 10px 24px;
+  border-radius: 32px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 16px;
+  pointer-events: none;
+  opacity: 0;
+  transition: all .3s;
+  z-index: 999;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Pinch hint */
+#pinch-hint {
+  position: absolute;
+  bottom: 56px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30,41,82,.85);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 28px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 12;
+  opacity: 0;
+  transition: opacity .4s;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+#pinch-hint.show { opacity: 1; }
+
+/* Undo/redo feedback flash */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.25);
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <div id="sidebar">
+
+    <div class="sidebar-logo">
+      ✏️ Letter<span>Tracer</span>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <!-- Language -->
+    <div class="sb-section">Script</div>
+    <div class="lang-group">
+      <button class="lang-btn active" id="lang-en" onclick="setLang('english')">🔤 EN</button>
+      <button class="lang-btn"        id="lang-te" onclick="setLang('telugu')">తె TE</button>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <!-- English case / Telugu set -->
+    <div class="sb-section" id="sub-label">Case</div>
+    <div id="case-group">
+      <button class="sb-btn active yellow-active" id="case-upper" onclick="setCase('upper')">
+        <span class="icon">ABC</span><span class="lbl">Upper</span>
+      </button>
+      <div style="height:5px"></div>
+      <button class="sb-btn yellow-active" id="case-lower" onclick="setCase('lower')">
+        <span class="icon">abc</span><span class="lbl">Lower</span>
+      </button>
+      <div style="height:5px"></div>
+      <button class="sb-btn yellow-active" id="case-both" onclick="setCase('both')">
+        <span class="icon">Aa</span><span class="lbl">Both</span>
+      </button>
+    </div>
+    <div id="tel-group" style="display:none;">
+      <button class="sb-btn active yellow-active" id="tel-vowels" onclick="setTeluguSet('vowels')">
+        <span class="icon">అ</span><span class="lbl">Vowels</span>
+      </button>
+      <div style="height:5px"></div>
+      <button class="sb-btn yellow-active" id="tel-cons" onclick="setTeluguSet('consonants')">
+        <span class="icon">క</span><span class="lbl">Hallu</span>
+      </button>
+      <div style="height:5px"></div>
+      <button class="sb-btn yellow-active" id="tel-nums" onclick="setTeluguSet('numbers')">
+        <span class="icon">౧</span><span class="lbl">Nums</span>
+      </button>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <!-- Starting character -->
+    <div class="sb-section">Start</div>
+    <button class="sb-btn" onclick="shiftStart(-1)">
+      <span class="icon">◀</span><span class="lbl">Prev</span>
+    </button>
+    <div style="height:3px;"></div>
+    <div id="start-display" style="
+      width:68px;min-height:52px;
+      background:rgba(255,255,255,.08);
+      border:2px solid rgba(255,255,255,.12);
+      border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Fredoka One',cursive;
+      font-size:28px;color:var(--yellow);
+      flex-shrink:0;
+    ">A</div>
+    <div style="height:3px;"></div>
+    <button class="sb-btn" onclick="shiftStart(1)">
+      <span class="icon">▶</span><span class="lbl">Next</span>
+    </button>
+
+    <div class="sb-div"></div>
+
+    <!-- Notebook size -->
+    <div class="sb-section">Size</div>
+    <button class="sb-btn active" id="nb-jumbo"    onclick="setNB('jumbo')">
+      <span class="icon" style="font-size:16px;">📓</span><span class="lbl">Jumbo<br>Pre-K</span>
+    </button>
+    <div style="height:5px"></div>
+    <button class="sb-btn" id="nb-large"    onclick="setNB('large')">
+      <span class="icon" style="font-size:16px;">📗</span><span class="lbl">Large<br>Gr 1-2</span>
+    </button>
+    <div style="height:5px"></div>
+    <button class="sb-btn" id="nb-medium"   onclick="setNB('medium')">
+      <span class="icon" style="font-size:16px;">📘</span><span class="lbl">Medium<br>Gr 3-4</span>
+    </button>
+    <div style="height:5px"></div>
+    <button class="sb-btn" id="nb-standard" onclick="setNB('standard')">
+      <span class="icon" style="font-size:16px;">📙</span><span class="lbl">Std<br>Gr 5+</span>
+    </button>
+
+    <div class="sb-div"></div>
+
+    <!-- Stroke size -->
+    <div class="sb-section">Pen</div>
+    <div class="stroke-sizes">
+      <button class="sz-btn" id="sz-xs" onclick="setStroke('xs')">
+        <div class="sz-dot" style="width:4px;height:4px;"></div><span>Fine</span>
+      </button>
+      <button class="sz-btn active" id="sz-sm" onclick="setStroke('sm')">
+        <div class="sz-dot" style="width:7px;height:7px;"></div><span>Med</span>
+      </button>
+      <button class="sz-btn" id="sz-md" onclick="setStroke('md')">
+        <div class="sz-dot" style="width:11px;height:11px;"></div><span>Bold</span>
+      </button>
+      <button class="sz-btn" id="sz-lg" onclick="setStroke('lg')">
+        <div class="sz-dot" style="width:16px;height:16px;"></div><span>Thick</span>
+      </button>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <!-- Ink color -->
+    <div class="sb-section">Color</div>
+    <div class="color-grid" id="color-grid">
+      <div class="clr-swatch active" style="background:#1E2952;" data-c="#1E2952"></div>
+      <div class="clr-swatch" style="background:#FF6B6B;" data-c="#FF6B6B"></div>
+      <div class="clr-swatch" style="background:#3EC9C0;" data-c="#3EC9C0"></div>
+      <div class="clr-swatch" style="background:#9B5DE5;" data-c="#9B5DE5"></div>
+      <div class="clr-swatch" style="background:#FF9F43;" data-c="#FF9F43"></div>
+      <div class="clr-swatch" style="background:#28C76F;" data-c="#28C76F"></div>
+      <div class="clr-swatch" style="background:#FF6EB4;" data-c="#FF6EB4"></div>
+      <div class="clr-swatch" style="background:#8B4513;" data-c="#8B4513"></div>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <!-- Zoom -->
+    <div class="sb-section">Zoom</div>
+    <div class="zoom-display" id="zoom-display">100%</div>
+    <div style="height:5px"></div>
+    <button class="sb-btn" onclick="resetZoom()">
+      <span class="icon">⌂</span><span class="lbl">Reset</span>
+    </button>
+
+    <div class="sb-div"></div>
+
+    <!-- Actions -->
+    <div class="sb-section">Edit</div>
+    <button class="sb-btn" onclick="undoStroke()">
+      <span class="icon">↩</span><span class="lbl">Undo</span>
+    </button>
+    <div style="height:5px"></div>
+    <button class="sb-btn danger" onclick="clearDrawing()">
+      <span class="icon">🗑</span><span class="lbl">Clear</span>
+    </button>
+
+    <div class="sb-div"></div>
+
+    <!-- Palm rejection status -->
+    <div class="palm-badge">
+      <div class="palm-dot"></div>
+      <div class="palm-text">Palm<br>Reject<br>ON</div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ═══════════ CANVAS ═══════════ -->
+  <div id="canvas-wrap">
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="drawCanvas"></canvas>
+    <div id="stylus-ind">✏️ Stylus Active</div>
+    <div id="page-info">A → Z</div>
+    <div id="pinch-hint">👌 Pinch two fingers to zoom · Drag to pan</div>
+    <div id="flash" class="flash"></div>
+  </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════════════ */
+const ENG = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const TEL_SETS = {
+  vowels: ['అ','ఆ','ఇ','ఈ','ఉ','ఊ','ఋ','ఎ','ఏ','ఐ','ఒ','ఓ','ఔ','అం','అః'],
+  consonants: [
+    'క','ఖ','గ','ఘ','ఙ','చ','ఛ','జ','ఝ','ఞ',
+    'ట','ఠ','డ','ఢ','ణ','త','థ','ద','ధ','న',
+    'ప','ఫ','బ','భ','మ','య','ర','ల','వ','శ','ష','స','హ','ళ','క్ష','ఱ'
+  ],
+  numbers: ['౦','౧','౨','౩','౪','౫','౬','౭','౮','౯'],
+};
+
+/* ═══════════════════════════════════════════════════════
+   NOTEBOOK CONFIG — lineH in world-space logical px
+   At zoom=1 these are the real pixel heights on screen.
+   Tablet screens are typically 150–260 PPI but we work
+   in logical CSS px. Kids need larger cells so we bias big.
+═══════════════════════════════════════════════════════ */
+const NB = {
+  jumbo:    { lineH: 120, strokeBase: 7,  name: 'Jumbo · Pre-K'   },
+  large:    { lineH: 88,  strokeBase: 6,  name: 'Large · Gr 1–2'  },
+  medium:   { lineH: 64,  strokeBase: 5,  name: 'Medium · Gr 3–4' },
+  standard: { lineH: 46,  strokeBase: 3.5,name: 'Std · Gr 5+'     },
+};
+
+const STROKE_SIZES = { xs: 0.55, sm: 1, md: 1.7, lg: 2.6 };
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+let lang       = 'english';
+let letterCase = 'upper';
+let teluguSet  = 'vowels';
+let currentNB  = 'jumbo';
+let strokeMult = 1;        // from STROKE_SIZES
+let inkColor   = '#1E2952';
+let startIndex = 0;
+
+// Zoom / pan
+let zoom = 1, panX = 0, panY = 0;
+
+// Drawing
+let isDrawing      = false;
+let hasStylusEver  = false;
+let strokes        = [];   // [{color,width,pts:[{x,y}]}]
+let currentStroke  = null;
+
+// Pinch
+const activePointers = new Map();
+let pinchActive    = false;
+let pinchStartDist = 1;
+let pinchStartZoom = 1;
+let pinchStartPanX = 0;
+let pinchStartPanY = 0;
+let pinchMidX      = 0;
+let pinchMidY      = 0;
+
+// High-DPI
+const DPR = window.devicePixelRatio || 1;
+
+/* ═══════════════════════════════════════════════════════
+   CANVAS SETUP
+═══════════════════════════════════════════════════════ */
+const wrap      = document.getElementById('canvas-wrap');
+const bgCanvas  = document.getElementById('bgCanvas');
+const drawCanvas= document.getElementById('drawCanvas');
+const bgCtx     = bgCanvas.getContext('2d');
+const drawCtx   = drawCanvas.getContext('2d');
+
+function resizeCanvases() {
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+
+  // Physical pixel dimensions
+  const PW = Math.round(W * DPR);
+  const PH = Math.round(H * DPR);
+
+  if (bgCanvas.width === PW && bgCanvas.height === PH) return;
+
+  // Save existing strokes to tmp
+  const tmp = document.createElement('canvas');
+  tmp.width  = drawCanvas.width  || PW;
+  tmp.height = drawCanvas.height || PH;
+  tmp.getContext('2d').drawImage(drawCanvas, 0, 0);
+
+  bgCanvas.width = drawCanvas.width  = PW;
+  bgCanvas.height= drawCanvas.height = PH;
+
+  // Scale both contexts by DPR so 1 logical unit = DPR physical pixels
+  bgCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // Restore strokes
+  drawCtx.save();
+  drawCtx.setTransform(DPR * zoom, 0, 0, DPR * zoom, panX * DPR, panY * DPR);
+  drawCtx.drawImage(tmp, 0, 0, tmp.width / DPR, tmp.height / DPR);
+  drawCtx.restore();
+
+  renderBg();
+}
+
+window.addEventListener('resize', resizeCanvases);
+requestAnimationFrame(() => requestAnimationFrame(resizeCanvases));
+
+/* ═══════════════════════════════════════════════════════
+   RENDER BACKGROUND  (world-space coordinates)
+   setTransform(DPR*zoom, 0, 0, DPR*zoom, panX*DPR, panY*DPR)
+   makes 1 world-unit = zoom logical px = zoom*DPR physical px
+═══════════════════════════════════════════════════════ */
+function renderBg() {
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+
+  // Reset to plain DPR scale first, fill paper
+  bgCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  bgCtx.fillStyle = '#FFFDF6';
+  bgCtx.fillRect(0, 0, W, H);
+
+  // Now apply zoom+pan in world space
+  bgCtx.save();
+  bgCtx.setTransform(DPR * zoom, 0, 0, DPR * zoom, panX * DPR, panY * DPR);
+
+  const cfg   = NB[currentNB];
+  const lineH = cfg.lineH;  // world-space
+  const sub   = lineH / 4;
+  const isT   = lang === 'telugu';
+
+  // Visible world rect
+  const wL = -panX / zoom,  wR = (W - panX) / zoom;
+  const wT = -panY / zoom,  wB = (H - panY) / zoom;
+
+  // Cell dimensions
+  const capH    = sub * 2.2;
+  const fontSize= capH * (isT ? 0.82 : 0.90);
+  const fontFace= isT ? `'Noto Sans Telugu', sans-serif` : `'Fredoka One', cursive`;
+  const cellW   = Math.round(capH * (isT ? 1.15 : 0.74) + 16);
+  const marginL = 20;
+
+  const perRow  = Math.max(1, Math.floor((wR - wL - marginL) / cellW));
+  const alpha   = getCurrentAlpha();
+
+  const firstRow = Math.max(1, Math.floor(wT / lineH));
+  const lastRow  = Math.ceil(wB / lineH) + 1;
+
+  // Update page info
+  const firstChar = alpha[startIndex % alpha.length];
+  const lastIdx   = (startIndex + perRow - 1) % alpha.length;
+  document.getElementById('page-info').textContent =
+    `${firstChar} → ${alpha[lastIdx]}  ·  🔍 ${Math.round(zoom * 100)}%`;
+
+  for (let row = firstRow; row <= lastRow; row++) {
+    const rowY    = row * lineH;
+    const topL    = rowY;
+    const midL    = rowY + sub;
+    const baseL   = rowY + sub * 2;
+    const descL   = rowY + sub * 3;
+
+    // Top (cap) line — warm pink
+    hline(topL,  'rgba(255,140,140,0.5)',  1.5, []);
+    // x-height dashed — teal
+    hline(midL,  'rgba(62,201,192,0.28)',  1,   [7,5]);
+    // Baseline — solid teal (strong reference)
+    hline(baseL, 'rgba(62,201,192,0.82)',  2.5, []);
+    // Descender — soft blue
+    hline(descL, 'rgba(150,200,255,0.38)', 1,   []);
+
+    // Ghost letters
+    const rowLetterIdx = startIndex + (row - firstRow) * perRow;
+
+    for (let col = 0; col < perRow; col++) {
+      const idx   = (rowLetterIdx + col) % alpha.length;
+      const glyph = getGlyph(alpha[idx]);
+      const x     = marginL + col * cellW;
+
+      // Ghost — very faint
+      bgCtx.globalAlpha = 1;
+      bgCtx.fillStyle   = isT ? 'rgba(155,93,229,0.13)' : 'rgba(62,201,192,0.13)';
+      bgCtx.font        = `${fontSize}px ${fontFace}`;
+      bgCtx.textBaseline= 'alphabetic';
+      bgCtx.fillText(glyph, x + 5, baseL);
+
+      // Lowercase hint below baseline (English 'both' mode)
+      if (!isT && letterCase === 'both') {
+        bgCtx.fillStyle = 'rgba(155,93,229,0.13)';
+        bgCtx.font      = `${fontSize * 0.52}px ${fontFace}`;
+        bgCtx.fillText(alpha[idx].toLowerCase(), x + 5, descL - 3);
+      }
+
+      // Tiny index label at top of cell
+      bgCtx.fillStyle   = isT ? 'rgba(155,93,229,0.42)' : 'rgba(62,201,192,0.45)';
+      bgCtx.font        = `700 ${Math.max(9, lineH * 0.115)}px 'Nunito', sans-serif`;
+      bgCtx.textBaseline= 'top';
+      bgCtx.fillText(alpha[idx], x + 5, topL + 3);
+
+      // Cell divider (skip first)
+      if (col > 0) {
+        bgCtx.strokeStyle = 'rgba(190,220,255,0.4)';
+        bgCtx.lineWidth   = 0.8;
+        bgCtx.setLineDash([2,5]);
+        bgCtx.beginPath();
+        bgCtx.moveTo(x, topL); bgCtx.lineTo(x, descL);
+        bgCtx.stroke();
+        bgCtx.setLineDash([]);
+      }
+    }
+  }
+
+  bgCtx.restore();
+
+  // Helpers
+  function hline(y, color, lw, dash) {
+    bgCtx.strokeStyle = color;
+    bgCtx.lineWidth   = lw;
+    bgCtx.setLineDash(dash);
+    bgCtx.beginPath();
+    bgCtx.moveTo(wL - 40, y);
+    bgCtx.lineTo(wR + 40, y);
+    bgCtx.stroke();
+    bgCtx.setLineDash([]);
+  }
+}
+
+function getCurrentAlpha() {
+  return lang === 'english' ? ENG : TEL_SETS[teluguSet];
+}
+
+function getGlyph(ch) {
+  if (lang === 'telugu') return ch;
+  return letterCase === 'lower' ? ch.toLowerCase() : ch;
+}
+
+/* ═══════════════════════════════════════════════════════
+   REDRAW ALL STROKES  (after zoom/pan change)
+═══════════════════════════════════════════════════════ */
+function redrawStrokes() {
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  drawCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawCtx.clearRect(0, 0, W, H);
+
+  drawCtx.save();
+  drawCtx.setTransform(DPR * zoom, 0, 0, DPR * zoom, panX * DPR, panY * DPR);
+
+  for (const s of strokes) {
+    if (s.pts.length < 2) continue;
+    drawCtx.strokeStyle = s.color;
+    drawCtx.lineWidth   = s.width;
+    drawCtx.lineCap     = 'round';
+    drawCtx.lineJoin    = 'round';
+    drawCtx.globalAlpha = 1;
+    drawCtx.beginPath();
+    drawCtx.moveTo(s.pts[0].x, s.pts[0].y);
+    for (let i = 1; i < s.pts.length; i++) drawCtx.lineTo(s.pts[i].x, s.pts[i].y);
+    drawCtx.stroke();
+  }
+
+  drawCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════
+   ZOOM HELPERS
+═══════════════════════════════════════════════════════ */
+function clampZ(z) { return Math.min(10, Math.max(0.25, z)); }
+
+function resetZoom() {
+  zoom = 1; panX = 0; panY = 0;
+  updateZoomUI();
+  renderBg();
+  redrawStrokes();
+}
+
+function updateZoomUI() {
+  document.getElementById('zoom-display').textContent = Math.round(zoom * 100) + '%';
+}
+
+/* ═══════════════════════════════════════════════════════
+   PALM REJECTION LOGIC
+   
+   Priority order:
+   1. pointerType === 'pen'   → Apple Pencil / Wacom → ALWAYS draw
+   2. activePointers.size ≥ 2 → multi-touch in progress → pinch, not draw
+   3. hasStylusEver = true    → once stylus seen, block ALL touch (pure palm rejection)
+   4. Touch contact area large → palm resting
+   5. Zero pressure touch      → resting palm
+   6. pointerType === 'mouse'  → desktop fallback → allow
+═══════════════════════════════════════════════════════ */
+function isRejected(e) {
+  if (e.pointerType === 'pen')   return false; // stylus: always draw
+  if (e.pointerType === 'mouse') return false; // mouse: allow
+  // Touch:
+  if (activePointers.size >= 2)  return true;  // multi-touch → pinch
+  if (hasStylusEver)             return true;  // stylus session → block all touch
+  if ((e.width || 0) > 30 || (e.height || 0) > 30) return true; // large = palm
+  if (e.pressure < 0.01)        return true;  // resting palm
+  return false;
+}
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
+}
+
+function pointerPos(e) {
+  const r = drawCanvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function hypot2(p1, p2) { return Math.hypot(p2.x - p1.x, p2.y - p1.y); }
+function midPt(p1, p2)  { return { x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 }; }
+
+/* ═══════════════════════════════════════════════════════
+   POINTER EVENTS — unified draw + pinch handler
+═══════════════════════════════════════════════════════ */
+const stylusInd = document.getElementById('stylus-ind');
+
+drawCanvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const pos = pointerPos(e);
+  activePointers.set(e.pointerId, pos);
+
+  // Detect stylus
+  if (e.pointerType === 'pen') {
+    hasStylusEver = true;
+    stylusInd.classList.add('visible');
+    clearTimeout(stylusInd._t);
+    stylusInd._t = setTimeout(() => stylusInd.classList.remove('visible'), 2000);
+  }
+
+  // Start pinch when 2nd finger lands
+  if (activePointers.size === 2) {
+    // Commit any in-progress stroke
+    if (isDrawing && currentStroke) {
+      strokes.push(currentStroke);
+      currentStroke = null;
+      isDrawing = false;
+    }
+    pinchActive = true;
+    const pts = [...activePointers.values()];
+    pinchStartDist = Math.max(1, hypot2(pts[0], pts[1]));
+    pinchStartZoom = zoom;
+    pinchStartPanX = panX;
+    pinchStartPanY = panY;
+    const m = midPt(pts[0], pts[1]);
+    pinchMidX = m.x; pinchMidY = m.y;
+    document.getElementById('zoom-display').classList.add('zooming');
+    return;
+  }
+
+  if (pinchActive || isRejected(e)) return;
+
+  // ── Start drawing stroke ──
+  drawCanvas.setPointerCapture(e.pointerId);
+  isDrawing = true;
+
+  const wp  = screenToWorld(pos.x, pos.y);
+  const sw  = strokeWidth(e);
+  currentStroke = { color: inkColor, width: sw, pts: [wp] };
+
+  drawCtx.save();
+  drawCtx.setTransform(DPR * zoom, 0, 0, DPR * zoom, panX * DPR, panY * DPR);
+  applyStyle(sw);
+  drawCtx.beginPath();
+  drawCtx.moveTo(wp.x, wp.y);
+  drawCtx.restore();
+}, { passive: false });
+
+drawCanvas.addEventListener('pointermove', e => {
+  e.preventDefault();
+  const pos = pointerPos(e);
+  activePointers.set(e.pointerId, pos);
+
+  // ── Pinch: zoom + pan ──
+  if (activePointers.size === 2 && pinchActive) {
+    const pts    = [...activePointers.values()];
+    const newD   = Math.max(1, hypot2(pts[0], pts[1]));
+    const newMid = midPt(pts[0], pts[1]);
+    const newZ   = clampZ(pinchStartZoom * (newD / pinchStartDist));
+
+    // World-space anchor = where pinch started in world
+    const wx = (pinchMidX - pinchStartPanX) / pinchStartZoom;
+    const wy = (pinchMidY - pinchStartPanY) / pinchStartZoom;
+
+    // New pan: keep world anchor under new mid
+    panX = newMid.x - wx * newZ;
+    panY = newMid.y - wy * newZ;
+    zoom = newZ;
+
+    updateZoomUI();
+    renderBg();
+    redrawStrokes();
+    return;
+  }
+
+  if (!isDrawing || pinchActive || isRejected(e)) return;
+
+  // ── Continue stroke ──
+  const wp = screenToWorld(pos.x, pos.y);
+  const sw = strokeWidth(e);
+  currentStroke.pts.push(wp);
+
+  drawCtx.save();
+  drawCtx.setTransform(DPR * zoom, 0, 0, DPR * zoom, panX * DPR, panY * DPR);
+  applyStyle(sw);
+  drawCtx.lineTo(wp.x, wp.y);
+  drawCtx.stroke();
+  drawCtx.beginPath();
+  drawCtx.moveTo(wp.x, wp.y);
+  drawCtx.restore();
+}, { passive: false });
+
+drawCanvas.addEventListener('pointerup', e => {
+  e.preventDefault();
+  activePointers.delete(e.pointerId);
+
+  if (activePointers.size < 2) {
+    if (pinchActive) {
+      pinchActive = false;
+      document.getElementById('zoom-display').classList.remove('zooming');
+    }
+  }
+
+  if (isDrawing) {
+    isDrawing = false;
+    if (currentStroke && currentStroke.pts.length > 0) strokes.push(currentStroke);
+    currentStroke = null;
+  }
+}, { passive: false });
+
+drawCanvas.addEventListener('pointercancel', e => {
+  activePointers.delete(e.pointerId);
+  isDrawing = false; pinchActive = false;
+  currentStroke = null;
+  document.getElementById('zoom-display').classList.remove('zooming');
+});
+
+// Mouse-wheel zoom (desktop / external mouse on tablet)
+drawCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const pos   = pointerPos(e);
+  const delta = e.deltaY < 0 ? 1.12 : 0.9;
+  const newZ  = clampZ(zoom * delta);
+  const wx    = (pos.x - panX) / zoom;
+  const wy    = (pos.y - panY) / zoom;
+  panX = pos.x - wx * newZ;
+  panY = pos.y - wy * newZ;
+  zoom = newZ;
+  updateZoomUI();
+  renderBg();
+  redrawStrokes();
+}, { passive: false });
+
+function strokeWidth(e) {
+  const base = NB[currentNB].strokeBase * strokeMult;
+  const pm   = e.pointerType === 'pen' ? (0.35 + (e.pressure || 0.5) * 0.9) : 1;
+  return Math.max(0.8, base * pm);
+}
+
+function applyStyle(w) {
+  drawCtx.strokeStyle = inkColor;
+  drawCtx.lineWidth   = w;
+  drawCtx.lineCap     = 'round';
+  drawCtx.lineJoin    = 'round';
+  drawCtx.globalAlpha = 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTROLS
+═══════════════════════════════════════════════════════ */
+function setLang(l) {
+  lang = l; startIndex = 0;
+  document.getElementById('lang-en').classList.toggle('active', l === 'english');
+  document.getElementById('lang-te').classList.toggle('active', l === 'telugu');
+  document.getElementById('case-group').style.display = l === 'english' ? '' : 'none';
+  document.getElementById('tel-group').style.display  = l === 'telugu'  ? '' : 'none';
+  document.getElementById('sub-label').textContent    = l === 'english' ? 'Case' : 'Set';
+  updateStartDisplay();
+  renderBg();
+  showToast(l === 'telugu' ? '🇮🇳 Telugu అక్షరమాల!' : '🔤 English alphabet!');
+}
+
+function setCase(c) {
+  letterCase = c;
+  ['upper','lower','both'].forEach(x =>
+    document.getElementById(`case-${x}`).classList.toggle('active', x === c));
+  renderBg();
+}
+
+function setTeluguSet(s) {
+  teluguSet = s; startIndex = 0;
+  ['vowels','cons','nums'].forEach((x, i) => {
+    const key = ['vowels','consonants','numbers'][i];
+    document.getElementById(`tel-${x}`).classList.toggle('active', key === s);
+  });
+  updateStartDisplay();
+  renderBg();
+}
+
+function setNB(nb) {
+  currentNB = nb;
+  ['jumbo','large','medium','standard'].forEach(x =>
+    document.getElementById(`nb-${x}`).classList.toggle('active', x === nb));
+  renderBg();
+  showToast('📓 ' + NB[nb].name);
+}
+
+function setStroke(sz) {
+  strokeMult = STROKE_SIZES[sz];
+  ['xs','sm','md','lg'].forEach(x =>
+    document.getElementById(`sz-${x}`).classList.toggle('active', x === sz));
+}
+
+function shiftStart(d) {
+  const alpha = getCurrentAlpha();
+  startIndex  = (startIndex + d + alpha.length) % alpha.length;
+  updateStartDisplay();
+  renderBg();
+}
+
+function updateStartDisplay() {
+  const alpha = getCurrentAlpha();
+  document.getElementById('start-display').textContent = alpha[startIndex];
+}
+
+document.getElementById('color-grid').addEventListener('click', e => {
+  const sw = e.target.closest('.clr-swatch');
+  if (!sw) return;
+  document.querySelectorAll('.clr-swatch').forEach(s => s.classList.remove('active'));
+  sw.classList.add('active');
+  inkColor = sw.dataset.c;
+});
+
+function undoStroke() {
+  if (strokes.length === 0) { showToast('Nothing to undo'); return; }
+  strokes.pop();
+  redrawStrokes();
+  flashScreen();
+}
+
+function clearDrawing() {
+  strokes.length = 0;
+  currentStroke  = null;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  drawCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawCtx.clearRect(0, 0, W, H);
+  showToast('🗑 Canvas cleared!');
+  flashScreen();
+}
+
+function flashScreen() {
+  const f = document.getElementById('flash');
+  f.classList.add('show');
+  setTimeout(() => f.classList.remove('show'), 120);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showHint() {
+  const h = document.getElementById('pinch-hint');
+  h.classList.add('show');
+  setTimeout(() => h.classList.remove('show'), 4000);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════ */
+// Default: jumbo for tablets
+setNB('jumbo');
+updateStartDisplay();
+updateZoomUI();
+
+showToast('✏️ Trace the letters with your stylus!');
+setTimeout(showHint, 1500);
+setTimeout(() => showToast('🤚 Palm rejection active — rest your hand freely!'), 5000);
+</script>
+</body>
+</html>

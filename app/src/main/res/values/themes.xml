@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LetterTracer" parent="android:Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowBackground">#FFFDF6</item>
+        <item name="android:statusBarColor">#1E2952</item>
+        <item name="android:navigationBarColor">#1E2952</item>
+    </style>
+</resources>

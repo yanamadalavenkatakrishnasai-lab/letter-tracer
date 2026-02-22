@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.lettertracer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.lettertracer"
+        minSdk 24          // Android 7.0 — covers all modern tablets
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Tablet-specific: landscape default, no action bar
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+dependencies {
+    // No external dependencies — pure WebView wrapper
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
